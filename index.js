@@ -31,7 +31,8 @@ function getDbConnection() {
         options: {
             database: '',
             encrypt: true,
-            rowCollectionOnRequestCompletion: true
+            rowCollectionOnRequestCompletion: true,
+            port: 1433 // Default SQL Server port
         }
     };
 
@@ -39,17 +40,32 @@ function getDbConnection() {
     connectionString.split(';').forEach(part => {
         const [key, value] = part.split('=');
         if (key && value) {
-            // FINAL FIX: Correctly parse the server name, removing the port number.
-            if (key.toLowerCase() === 'server') {
-                config.server = value.replace('tcp:', '').split(',')[0];
+            if (key.toLowerCase() === 'server' || key.toLowerCase() === 'data source') {
+                // Remove tcp: prefix and extract server name and port
+                let serverValue = value.replace('tcp:', '');
+                
+                // Check if port is specified
+                if (serverValue.includes(',')) {
+                    const [serverName, portStr] = serverValue.split(',');
+                    config.server = serverName;
+                    config.options.port = parseInt(portStr) || 1433;
+                } else {
+                    config.server = serverValue;
+                }
             }
-            if (key.toLowerCase() === 'initial catalog') config.options.database = value;
-            if (key.toLowerCase() === 'user id') config.authentication.options.userName = value;
-            if (key.toLowerCase() === 'password') config.authentication.options.password = value;
+            if (key.toLowerCase() === 'initial catalog' || key.toLowerCase() === 'database') {
+                config.options.database = value;
+            }
+            if (key.toLowerCase() === 'user id' || key.toLowerCase() === 'uid') {
+                config.authentication.options.userName = value;
+            }
+            if (key.toLowerCase() === 'password' || key.toLowerCase() === 'pwd') {
+                config.authentication.options.password = value;
+            }
         }
     });
 
-    console.log(`Parsed config: Server=${config.server}, DB=${config.options.database}, User=${config.authentication.options.userName}`);
+    console.log(`Parsed config: Server=${config.server}, Port=${config.options.port}, DB=${config.options.database}, User=${config.authentication.options.userName}`);
     return new Connection(config);
 }
 
