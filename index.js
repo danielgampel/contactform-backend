@@ -39,7 +39,10 @@ function getDbConnection() {
     connectionString.split(';').forEach(part => {
         const [key, value] = part.split('=');
         if (key && value) {
-            if (key.toLowerCase() === 'server') config.server = value.replace('tcp:', '');
+            // FINAL FIX: Correctly parse the server name, removing the port number.
+            if (key.toLowerCase() === 'server') {
+                config.server = value.replace('tcp:', '').split(',')[0];
+            }
             if (key.toLowerCase() === 'initial catalog') config.options.database = value;
             if (key.toLowerCase() === 'user id') config.authentication.options.userName = value;
             if (key.toLowerCase() === 'password') config.authentication.options.password = value;
