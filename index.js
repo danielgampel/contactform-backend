@@ -13,6 +13,13 @@ const connectionString = process.env.DefaultConnection;
 
 // Function to connect to the database
 function getDbConnection() {
+    // NEW LOG
+    console.log("Attempting to parse connection string...");
+    if (!connectionString) {
+        console.error("FATAL: DefaultConnection environment variable not set.");
+        return null;
+    }
+
     const config = {
         server: '',
         authentication: {
@@ -32,30 +39,45 @@ function getDbConnection() {
     // Parse the connection string
     connectionString.split(';').forEach(part => {
         const [key, value] = part.split('=');
-        if (key.toLowerCase() === 'server') config.server = value.replace('tcp:', '');
-        if (key.toLowerCase() === 'initial catalog') config.options.database = value;
-        if (key.toLowerCase() === 'user id') config.authentication.options.userName = value;
-        if (key.toLowerCase() === 'password') config.authentication.options.password = value;
+        if (key && value) {
+            if (key.toLowerCase() === 'server') config.server = value.replace('tcp:', '');
+            if (key.toLowerCase() === 'initial catalog') config.options.database = value;
+            if (key.toLowerCase() === 'user id') config.authentication.options.userName = value;
+            if (key.toLowerCase() === 'password') config.authentication.options.password = value;
+        }
     });
 
+    // NEW LOG
+    console.log(`Parsed config: Server=${config.server}, DB=${config.options.database}, User=${config.authentication.options.userName}`);
     return new Connection(config);
 }
 
 // API endpoint to handle form submissions
 app.post('/api/contacts', (req, res) => {
+    // NEW LOG
+    console.log("Received POST request on /api/contacts");
     const { name, email, phone } = req.body;
+    console.log("Request body:", req.body);
 
     if (!name || !email || !phone) {
+        console.error("Validation failed: Missing fields.");
         return res.status(400).send('All fields are required.');
     }
 
     const connection = getDbConnection();
+    if (!connection) {
+        return res.status(500).send('Server configuration error: Missing connection string.');
+    }
 
     connection.on('connect', (err) => {
         if (err) {
-            console.error(err.message);
+            // NEW LOG
+            console.error("Database connection failed:", err.message);
             return res.status(500).send('Database connection error.');
         }
+
+        // NEW LOG
+        console.log("Database connected successfully. Executing SQL...");
 
         // SQL to insert data into the Contacts table
         const sql = `
@@ -71,9 +93,12 @@ app.post('/api/contacts', (req, res) => {
 
         const request = new Request(sql, (err) => {
             if (err) {
-                console.error(err.message);
+                // NEW LOG
+                console.error("SQL query execution failed:", err.message);
                 return res.status(500).send('Error executing query.');
             }
+            // NEW LOG
+            console.log("SQL query executed successfully.");
             res.status(200).send('Contact added successfully.');
             connection.close();
         });
