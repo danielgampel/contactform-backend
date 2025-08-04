@@ -8,15 +8,14 @@ app.use(cors());
 app.use(express.json());
 
 // Database connection configuration
-// The connection string is read from an environment variable set in Azure App Service
-const connectionString = process.env.DefaultConnection;
+// Check for the Azure-specific prefixed variable first, then fall back to the plain name.
+const connectionString = process.env.SQLAZURECONNSTR_DefaultConnection || process.env.DefaultConnection;
 
 // Function to connect to the database
 function getDbConnection() {
-    // NEW LOG
     console.log("Attempting to parse connection string...");
     if (!connectionString) {
-        console.error("FATAL: DefaultConnection environment variable not set.");
+        console.error("FATAL: Connection string environment variable not set.");
         return null;
     }
 
@@ -47,14 +46,12 @@ function getDbConnection() {
         }
     });
 
-    // NEW LOG
     console.log(`Parsed config: Server=${config.server}, DB=${config.options.database}, User=${config.authentication.options.userName}`);
     return new Connection(config);
 }
 
 // API endpoint to handle form submissions
 app.post('/api/contacts', (req, res) => {
-    // NEW LOG
     console.log("Received POST request on /api/contacts");
     const { name, email, phone } = req.body;
     console.log("Request body:", req.body);
@@ -71,12 +68,10 @@ app.post('/api/contacts', (req, res) => {
 
     connection.on('connect', (err) => {
         if (err) {
-            // NEW LOG
             console.error("Database connection failed:", err.message);
             return res.status(500).send('Database connection error.');
         }
 
-        // NEW LOG
         console.log("Database connected successfully. Executing SQL...");
 
         // SQL to insert data into the Contacts table
@@ -93,11 +88,9 @@ app.post('/api/contacts', (req, res) => {
 
         const request = new Request(sql, (err) => {
             if (err) {
-                // NEW LOG
                 console.error("SQL query execution failed:", err.message);
                 return res.status(500).send('Error executing query.');
             }
-            // NEW LOG
             console.log("SQL query executed successfully.");
             res.status(200).send('Contact added successfully.');
             connection.close();
